@@ -1,3 +1,2 @@
-// Pegá acá la URL de tu Worker de Cloudflare (termina en .workers.dev). Ver GUIA_IA.md
-// Mientras esté vacío, los botones "Mejorar con IA" quedan ocultos.
-const IA_ENDPOINT = '';
+// URL del Worker de Cloudflare que usa Workers AI. Ver GUIA_IA.md
+const IA_ENDPOINT = 'https://informe-planta-ia.myworker-dev.workers.dev';

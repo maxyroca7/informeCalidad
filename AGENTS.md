@@ -16,7 +16,7 @@ PWA para armar rápido el **Informe de Estado de Planta** (desvíos de calidad) 
 - `index.html`, `style.css`, `app.js`: la app. `config.js`: URL del Worker (`IA_ENDPOINT`).
 - `brand.js`: nombre de empresa, color de acento y textos fijos del PDF. `logo.png`: logo real de Agrofacil (extraído de la plantilla Word/PDF de la empresa).
 - `manifest.json`, `sw.js`, `icon-192.png`, `icon-512.png`: PWA.
-- `worker/worker.js`: Cloudflare Worker que llama a la API de Anthropic (no lo carga la app).
+- `worker.js`: Cloudflare Worker que usa el binding de Workers AI (no lo carga la app).
 - `GUIA_IA.md`: guía de puesta en marcha de la IA. `GUIA_MARCA.md`: cómo reemplazar el logo y ajustar colores/textos.
 
 ## Formato del informe (respetar)
@@ -32,7 +32,7 @@ Replica la plantilla Word de la empresa (branding). Los textos fijos y colores e
 **Trampa ya resuelta, no reintroducir:** si un salto de página ocurre dentro de `need()` justo antes de imprimir texto, `drawHeader()` cambia la fuente activa (usa Helvetica para el nombre de empresa). `need()` guarda la fuente/tamaño activos con `doc.getFont()` antes de llamar a `drawHeader()` y los restaura después. Si se modifica `need()`, mantener ese guardado/restaurado o el texto que sigue a un salto de página sale con la tipografía equivocada.
 
 ## IA
-- Flujo: `app.js` (`mejorar()` / `askAI()`) → Worker (`X-App-Token`) → API de Anthropic (modelo definido en `worker.js`).
+- Flujo: `app.js` (`mejorar()` / `askAI()`) → Worker (`X-App-Token`) → Workers AI (modelo definido en `worker.js`).
 - Los prompts están en `mejorar()`. La IA reescribe texto; **no recibe fotos**. El resultado queda editable y con "Deshacer".
 - Si `IA_ENDPOINT` está vacío, los botones de IA quedan ocultos.
 

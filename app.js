@@ -1,4 +1,5 @@
 const KEY='informe_planta_v1',NKEY='informe_nombre',$=id=>document.getElementById(id);
+const aiEndpoint=typeof IA_ENDPOINT==='string'?IA_ENDPOINT:'';
 let items=[],fotos=[],editIdx=null,sample=null,dls=null;
 try{items=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){}
 $('fecha').value=new Date().toISOString().slice(0,10);
@@ -58,17 +59,18 @@ $('lista').addEventListener('click',e=>{
 $('nuevo').onclick=()=>{if(confirm('Se borran todos los desvíos cargados. ¿Empezar un informe nuevo?')){items=[];persist();resetForm();render();msg('')}};
 
 /* IA: mejora el texto y lo deja editable */
-if(IA_ENDPOINT)document.querySelectorAll('.ia').forEach(b=>b.hidden=false);
+if(aiEndpoint)document.querySelectorAll('.ia').forEach(b=>b.hidden=false);
 const TKEY='informe_ia_token';
 async function askAI(prompt,onText){
   let tk='';try{tk=localStorage.getItem(TKEY)||''}catch(e){}
   if(!tk){tk=(window.prompt('Código de acceso a la IA (el APP_TOKEN que configuraste en el Worker):')||'').trim();if(!tk)throw {code:'sin_codigo'};try{localStorage.setItem(TKEY,tk)}catch(e){}}
-  const r=await fetch(IA_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json','X-App-Token':tk},body:JSON.stringify({prompt})});
+  const r=await fetch(aiEndpoint,{method:'POST',headers:{'Content-Type':'application/json','X-App-Token':tk},body:JSON.stringify({prompt})});
   if(r.status===401){try{localStorage.removeItem(TKEY)}catch(e){}throw {code:'codigo_incorrecto'}}
   if(!r.ok)throw {code:'http_'+r.status};
   const t=(((await r.json()).text)||'').trim();if(onText)onText({text:t});return {text:t};
 }
 async function mejorar(k){
+  if(!aiEndpoint){msg('La IA todavía no está configurada.');return}
   const ta=$(k),orig=ta.value.trim();if(!orig){msg('Escribí algo primero y después lo mejoro.');return}
   const b=$('ia-'+k);b.disabled=true;b.textContent='Pensando…';ta.dataset.prev=ta.value;
   const reglas=k==='desc'
