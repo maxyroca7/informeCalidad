@@ -1,5 +1,5 @@
 const KEY='informe_planta_v1',NKEY='informe_nombre',$=id=>document.getElementById(id);
-const aiEndpoint=typeof IA_ENDPOINT==='string'?IA_ENDPOINT:'';
+const aiEndpoint=typeof IA_ENDPOINT==='string'&&IA_ENDPOINT.trim()?IA_ENDPOINT:'https://informe-planta-ia.myworker-dev.workers.dev';
 let items=[],fotos=[],editIdx=null,sample=null,dls=null;
 try{items=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){}
 $('fecha').value=new Date().toISOString().slice(0,10);
@@ -170,4 +170,4 @@ $('pdf').onclick=async()=>{
 };
 render();
 
-if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('./sw.js'));
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=9'));
