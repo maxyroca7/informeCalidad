@@ -14,14 +14,22 @@ PWA para armar rápido el **Informe de Estado de Planta** (desvíos de calidad) 
 
 ## Archivos
 - `index.html`, `style.css`, `app.js`: la app. `config.js`: URL del Worker (`IA_ENDPOINT`).
+- `brand.js`: nombre de empresa, color de acento y textos fijos del PDF. `logo.png`: logo real de Agrofacil (extraído de la plantilla Word/PDF de la empresa).
 - `manifest.json`, `sw.js`, `icon-192.png`, `icon-512.png`: PWA.
 - `worker/worker.js`: Cloudflare Worker que llama a la API de Anthropic (no lo carga la app).
-- `GUIA_IA.md`: guía de puesta en marcha de la IA.
+- `GUIA_IA.md`: guía de puesta en marcha de la IA. `GUIA_MARCA.md`: cómo reemplazar el logo y ajustar colores/textos.
 
 ## Formato del informe (respetar)
-- Título "Informe de Estado de Planta", subtítulo "Departamento de Calidad", fecha de emisión.
-- Cada desvío en su propia página: "Desvío N.° X - Sector"; descripción de 2 a 4 líneas (qué se ve, dónde, qué norma no se cumple); "Registro fotográfico" (1 foto grande, 2 o más en grilla de 2 columnas); "Acción Correctiva Propuesta" con 1 o 2 acciones numeradas (verbo + qué hacer + con qué), lenguaje poco técnico.
+Replica la plantilla Word de la empresa (branding). Los textos fijos y colores están en `brand.js`; el logo es `logo.png` (si no carga, se usa `BRAND.empresa` como texto). No hardcodear estos valores en `app.js`: se editan solo en `brand.js`.
+- **Encabezado en cada página:** logo (o nombre de empresa) arriba a la izquierda + línea gris fina debajo. Se redibuja en cada salto de página (`drawHeader()`).
+- **Portada (solo página 1):** etiqueta roja con letras espaciadas ("I N F O R M E  |  C A L I D A D"), título en Times bold 22pt a dos líneas, meta en Courier ("FECHA dd/mm/aaaa", nombre en mayúsculas, departamento), párrafo "Objetivo del relevamiento" fijo.
+- **Fuente del cuerpo:** Courier (monoespaciada) en todo el contenido de los desvíos; el título usa Times; la etiqueta roja y el nombre de empresa (fallback sin logo) usan Helvetica.
+- **Flujo continuo:** los desvíos NO empiezan cada uno en página nueva; el contenido fluye y el salto de página ocurre solo cuando no entra (`need()`), igual que en Word.
+- Cada desvío: `DESVÍOS N°X SECTOR` (mayúsculas) con línea de color de acento debajo; "Descripción:" en cursiva + párrafo; "Registro fotográfico" en cursiva + fotos en grilla de hasta 2 columnas, cada foto escalada a un ancho de celda fijo manteniendo su proporción (alto tope 120mm), no recortada; "Acción Correctiva Propuesta:" en negrita + viñetas (una acción por línea en el campo `acc`, sin numerar).
+- **Pie de página en cada página:** "Estado de planta · dd/mm/aaaa | NOMBRE | Página N", centrado, chico, gris. Se agrega en una segunda pasada al final (`doc.setPage(p)`) porque recién ahí se conoce el total de páginas.
 - No usar los nombres japoneses de las 5S (Seiri, Seiton, etc.) en las acciones.
+
+**Trampa ya resuelta, no reintroducir:** si un salto de página ocurre dentro de `need()` justo antes de imprimir texto, `drawHeader()` cambia la fuente activa (usa Helvetica para el nombre de empresa). `need()` guarda la fuente/tamaño activos con `doc.getFont()` antes de llamar a `drawHeader()` y los restaura después. Si se modifica `need()`, mantener ese guardado/restaurado o el texto que sigue a un salto de página sale con la tipografía equivocada.
 
 ## IA
 - Flujo: `app.js` (`mejorar()` / `askAI()`) → Worker (`X-App-Token`) → API de Anthropic (modelo definido en `worker.js`).

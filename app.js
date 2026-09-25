@@ -1,7 +1,10 @@
-const KEY='informe_planta_v1',$=id=>document.getElementById(id);
+const KEY='informe_planta_v1',NKEY='informe_nombre',$=id=>document.getElementById(id);
 let items=[],fotos=[],editIdx=null,sample=null,dls=null;
 try{items=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){}
 $('fecha').value=new Date().toISOString().slice(0,10);
+try{$('nombre').value=localStorage.getItem(NKEY)||''}catch(e){}
+const logoImgEl=$('logoImg');
+const hex2rgb=h=>{const n=parseInt(h.replace('#',''),16);return [(n>>16)&255,(n>>8)&255,n&255]};
 const msg=t=>{$('msg').textContent=t};
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(items))}catch(e){msg('No hay espacio para guardar el borrador en el celular. Generá el PDF antes de seguir.')}}
@@ -70,7 +73,7 @@ async function mejorar(k){
   const b=$('ia-'+k);b.disabled=true;b.textContent='Pensando…';ta.dataset.prev=ta.value;
   const reglas=k==='desc'
     ?'Reescribí la descripción de un desvío de calidad en planta: 2 a 4 líneas que digan qué se ve, dónde y qué norma o buena práctica no se cumple.'
-    :'Reescribí la acción correctiva propuesta: máximo 2 acciones en lista numerada (1. 2.), cada una con verbo + qué hacer + con qué, en lenguaje claro y no muy técnico. No uses los nombres en japonés de las 5S (Seiri, Seiton, etc.).';
+    :'Reescribí la acción correctiva propuesta: máximo 2 acciones, cada una en su propia línea (sin números ni viñetas), con verbo + qué hacer + con qué, en lenguaje claro y no muy técnico. No uses los nombres en japonés de las 5S (Seiri, Seiton, etc.).';
   const otro=k==='desc'?$('acc').value:$('desc').value;
   const prompt=`Sos asistente de un Checker de Calidad en una planta. ${reglas} Mantené los hechos del texto original y no inventes datos. Español claro y profesional. Respondé SOLO con el texto final, sin comillas ni explicaciones.\nSector: ${$('sector').value||'(sin indicar)'}\nContexto (el otro campo del desvío): ${otro||'(vacío)'}\nTexto original:\n${orig}`;
   try{
@@ -84,39 +87,82 @@ async function mejorar(k){
   $('undo-'+k).onclick=()=>{$(k).value=$(k).dataset.prev||'';$('undo-'+k).hidden=true};
 });
 
-/* PDF: cada desvío en su página, fotos en grilla automática */
+/* PDF: encabezado de marca en cada página, desvíos en flujo continuo, pie con página */
 $('pdf').onclick=async()=>{
   if(!items.length){msg('Todavía no cargaste desvíos.');return}
   if(!window.jspdf){msg('No cargó el generador de PDF. Revisá la conexión.');return}
-  const {jsPDF}=window.jspdf,doc=new jsPDF({unit:'mm',format:'a4'}),W=210,M=18,CW=W-2*M;let y=0;
-  const need=h=>{if(y+h>282){doc.addPage();y=20}};
-  const lines=(t,size,bold)=>{doc.setFont('helvetica',bold?'bold':'normal');doc.setFontSize(size);
-    for(const l of doc.splitTextToSize(t,CW)){need(6);doc.text(l,M,y);y+=5.6}};
+  const nombre=$('nombre').value.trim();try{localStorage.setItem(NKEY,nombre)}catch(e){}
+  const {jsPDF}=window.jspdf,doc=new jsPDF({unit:'mm',format:'a4'}),W=210,M=20,CW=W-2*M;let y=0;
   const [yy,mm,dd]=$('fecha').value.split('-'),fecha=`${dd}/${mm}/${yy}`;
-  doc.setFont('helvetica','bold');doc.setFontSize(20);doc.text('Informe de Estado de Planta',W/2,30,{align:'center'});
-  doc.setFont('helvetica','normal');doc.setFontSize(13);doc.text('Departamento de Calidad',W/2,38,{align:'center'});
-  doc.setFontSize(10);doc.text('Fecha de emisión: '+fecha,W/2,45,{align:'center'});
-  items.forEach((it,i)=>{
-    if(i===0)y=58;else{doc.addPage();y=20}
-    lines(`Desvío N.° ${i+1} - ${it.sector||'Sin sector'}`,14,true);y+=2;
-    if(it.desc){lines(it.desc,11,false);y+=3}
-    if(it.fotos.length){
-      lines('Registro fotográfico',12,true);y+=1;
-      const n=it.fotos.length,cols=n===1?1:2,cw=cols===1?CW*.8:(CW-6)/2,ch=cols===1?105:68;
-      for(let k=0;k<n;k+=cols){
-        need(ch);
-        for(let c=0;c<cols&&k+c<n;c++){
-          const f=it.fotos[k+c],s=Math.min(cw/f.w,ch/f.h),w=f.w*s,h=f.h*s;
-          const cx=cols===1?M+(CW-cw)/2:M+c*(cw+6);
-          doc.addImage(f.d,'JPEG',cx+(cw-w)/2,y+(ch-h)/2,w,h);
-        }
-        y+=ch+4;
-      }
-      y+=2;
+  const logoOk=logoImgEl&&logoImgEl.complete&&logoImgEl.naturalWidth>0;
+  const accentRGB=hex2rgb(BRAND.colorAcento);
+
+  function drawHeader(){
+    let bottom=20;
+    if(logoOk){
+      const maxH=14,ratio=logoImgEl.naturalWidth/logoImgEl.naturalHeight;let h=maxH,w=h*ratio;
+      if(w>70){w=70;h=w/ratio}
+      doc.addImage(logoImgEl,'PNG',M,12,w,h);bottom=12+h;
+    }else{
+      doc.setFont('helvetica','bold');doc.setFontSize(15);doc.setTextColor(40);
+      doc.text(BRAND.empresa,M,20);doc.setTextColor(0);bottom=22;
     }
-    if(it.acc){need(20);lines('Acción Correctiva Propuesta',12,true);y+=1;lines(it.acc,11,false)}
+    doc.setDrawColor(200);doc.setLineWidth(.3);doc.line(M,bottom+4,W-M,bottom+4);
+    y=bottom+16;
+  }
+  const need=h=>{if(y+h>278){const f=doc.getFont(),sz=doc.internal.getFontSize();doc.addPage();drawHeader();doc.setFont(f.fontName,f.fontStyle);doc.setFontSize(sz)}};
+  const lines=(t,size,style)=>{doc.setFont('courier',style==='bold'?'bold':style==='italic'?'italic':'normal');doc.setFontSize(size);
+    for(const l of doc.splitTextToSize(t,CW)){need(6);doc.text(l,M,y);y+=5.6}};
+  function bulletList(t){
+    doc.setFont('courier','normal');doc.setFontSize(10.5);
+    t.split('\n').map(s=>s.trim()).filter(Boolean).forEach(item=>{
+      const w=doc.splitTextToSize(item,CW-8);need(6);doc.text('•',M,y);doc.text(w[0],M+6,y);y+=5.6;
+      for(let k=1;k<w.length;k++){need(6);doc.text(w[k],M+6,y);y+=5.6}
+    });
+  }
+  function photoGrid(fs){
+    if(!fs.length)return;
+    lines('Registro fotográfico',10.5,'italic');y+=1;
+    const n=fs.length,cols=n===1?1:2,gap=6,cellW=cols===1?CW*.55:(CW-gap)/2;
+    for(let k=0;k<n;k+=cols){
+      const row=fs.slice(k,k+cols).map(f=>{let w=cellW,h=w*f.h/f.w;if(h>120){h=120;w=h*f.w/f.h}return{f,w,h}});
+      const rowH=Math.max(...row.map(r=>r.h));need(rowH+6);
+      row.forEach((r,idx)=>{const x=M+idx*(cellW+gap)+(cellW-r.w)/2;doc.addImage(r.f.d,'JPEG',x,y,r.w,r.h)});
+      y+=rowH+6;
+    }
+    y+=1;
+  }
+
+  drawHeader();
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...accentRGB);
+  doc.text(BRAND.etiqueta.split('').join(' '),M,y);doc.setTextColor(0);y+=9;
+  doc.setFont('times','bold');doc.setFontSize(22);
+  BRAND.tituloInforme.split('\n').forEach(l=>{doc.text(l,M,y);y+=9});
+  y+=4;
+  doc.setFont('courier','normal');doc.setFontSize(10);
+  [`FECHA ${fecha}`,nombre?nombre.toUpperCase():'',BRAND.departamento].filter(Boolean).forEach(l=>{doc.text(l,M,y);y+=5.5});
+  y+=4;
+  lines(BRAND.objetivo,10.5,'normal');y+=6;
+
+  items.forEach((it,i)=>{
+    need(14);
+    doc.setFont('courier','bold');doc.setFontSize(12.5);
+    doc.text(`DESVÍOS N°${i+1} ${(it.sector||'SIN SECTOR').toUpperCase()}`,M,y);
+    doc.setDrawColor(...accentRGB);doc.setLineWidth(.5);doc.line(M,y+2,W-M,y+2);y+=9;
+    if(it.desc){lines('Descripción:',10.5,'italic');lines(it.desc,10.5,'normal');y+=3}
+    photoGrid(it.fotos);
+    if(it.acc){lines('Acción Correctiva Propuesta:',10.5,'bold');y+=1;bulletList(it.acc);y+=3}
+    y+=4;
   });
-  const filename=`Informe_Estado_de_Planta_${$('fecha').value}.pdf`;
+
+  const total=doc.internal.getNumberOfPages();
+  for(let p=1;p<=total;p++){
+    doc.setPage(p);doc.setFont('courier','normal');doc.setFontSize(8);doc.setTextColor(120);
+    doc.text(`Estado de planta · ${fecha}${nombre?` | ${nombre}`:''} | Página ${p}`,W/2,290,{align:'center'});
+    doc.setTextColor(0);
+  }
+
+  const filename=`Reporte_Estado_de_Planta_${$('fecha').value}.pdf`;
   try{const a=document.createElement('a');a.href=URL.createObjectURL(doc.output('blob'));a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);msg('PDF generado.')}
   catch(e){msg('No se pudo guardar el PDF.')}
 };
