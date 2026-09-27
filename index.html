@@ -7,10 +7,11 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="style.css">
+<script>try{var t=localStorage.getItem('informe_tema');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
 <script src="jspdf.umd.min.js"></script>
 </head><body><main>
 <img id="logoImg" src="logo.png" alt="" hidden>
-<h1>Informe de Estado de Planta</h1>
+<div class="top"><h1>Informe de Estado de Planta</h1><button class="ghost" id="tema" aria-label="Cambiar tema claro/oscuro">🌙</button></div>
 <label for="fecha" style="margin-top:0">Fecha de emisión</label><input type="date" id="fecha" style="max-width:200px">
 <label for="nombre">Nombre y apellido (va en el encabezado y pie del PDF)</label><input id="nombre" placeholder="Ej: Roca Maximiliano" style="max-width:280px;margin-bottom:14px">
 
