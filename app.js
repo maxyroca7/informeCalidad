@@ -8,6 +8,11 @@ const logoImgEl=$('logoImg');
 const hex2rgb=h=>{const n=parseInt(h.replace('#',''),16);return [(n>>16)&255,(n>>8)&255,n&255]};
 const msg=t=>{$('msg').textContent=t};
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// Tema claro/oscuro: el botón alterna y se recuerda en localStorage
+const temaOscuro=()=>(document.documentElement.dataset.theme||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'))==='dark';
+const pintarTema=()=>{$('tema').textContent=temaOscuro()?'☀️':'🌙'};
+$('tema').addEventListener('click',()=>{const t=temaOscuro()?'light':'dark';document.documentElement.dataset.theme=t;try{localStorage.setItem('informe_tema',t)}catch(e){}pintarTema()});
+pintarTema();
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(items))}catch(e){msg('No hay espacio para guardar el borrador en el celular. Generá el PDF antes de seguir.')}}
 
 function resize(f){return new Promise(res=>{const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,1200/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);res({d:c.toDataURL('image/jpeg',.75),w:c.width,h:c.height})};im.src=r.result};r.readAsDataURL(f)})}
